@@ -1,29 +1,72 @@
 ﻿using netDxf;
 using netDxf.Entities;
 using netDxf.Objects;
+using System;
+using System.IO;
+using System.IO.Compression;
+using System.Text;
 
 namespace CreateZIPFile1
 {
-    internal class ExportDXF
-    {
-        public static void CreateDXF(string pathImgFile)
-        {
-            // Создание нового DXF файла
-            DxfDocument dxf = new DxfDocument();
+	internal class ExportDXF
+	{
+		public static void CreateDXF(string sourceImage)
+		{
+			string imagePath = SaveImage(sourceImage);
+			
+			DxfDocument dxf = new DxfDocument();
+			dxf.Entities.Add(CreateImage(imagePath));
+			
+			string tempDirectory = Path.GetTempPath();
+			
+			//сохранение dxf во временную директорию
+			string dxfFilePath = Path.Combine(tempDirectory, "map.dxf");
+			dxf.Save(dxfFilePath);
 
-            // Нужно тут добавить путь к изображению
-            dxf.Entities.Add(CreateImage("pathImgFile"));
-            // Сохранение документа в файл
-            // Нужно указать путь на зипфайл
-            dxf.Save("");
-        }
+			// Обновляем путь в DXF файле
+			string relativeImagePath = "Images/" + Path.GetFileName(imagePath);
+			UpdateDxfFileWithRelativePath(dxfFilePath, relativeImagePath, imagePath);
 
-        private static EntityObject CreateImage(string pathImgFile)
-        {
-            var imageDefenition = new ImageDefinition(pathImgFile);
-            var image = new Image(imageDefenition, new Vector2(-800, -800), 1600, 1600);
+			//куда хотим сохранять арихв
+			string archivePath = @"D:\archive.zip";
 
-            return image;
-        }
-    }
+			using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create)) {
+				archive.CreateEntryFromFile(dxfFilePath, Path.GetFileName(dxfFilePath));
+				archive.CreateEntryFromFile(imagePath, "Images/" + Path.GetFileName(imagePath));
+			}
+
+			File.Delete(dxfFilePath);
+			File.Delete(imagePath);
+		}
+
+		private static string SaveImage(string sourceImage)
+		{
+			byte[] imageBytes = Convert.FromBase64String(sourceImage);
+			string tempDirectory = Path.GetTempPath();
+			string jpgFilePath = Path.Combine(tempDirectory, @"\image.jpg"); //путь до изображения во временную диреткорию
+			File.WriteAllBytes(jpgFilePath, imageBytes);
+
+			return jpgFilePath;
+		}
+
+		private static void UpdateDxfFileWithRelativePath(string dxfFilePath, string relativeImagePath, string imagePath)
+		{
+			// Читаем содержимое DXF файла
+			string dxfContent = File.ReadAllText(dxfFilePath);
+
+			// Заменяем абсолютный путь на релевантный путь
+			string updatedDxfContent = dxfContent.Replace(imagePath, relativeImagePath);
+
+			// Перезаписываем DXF файл с обновленным содержимым
+			File.WriteAllText(dxfFilePath, updatedDxfContent, Encoding.Default);
+		}
+
+		private static EntityObject CreateImage(string pathImgFile)
+		{
+			ImageDefinition imageDefenition = new ImageDefinition(pathImgFile);
+			Image image = new Image(imageDefenition, new Vector2(-800, -800), 1600, 1600);
+
+			return image;
+		}
+	}
 }
