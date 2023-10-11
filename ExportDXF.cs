@@ -17,22 +17,27 @@ namespace CreateZIPFile1
 			DxfDocument dxf = new DxfDocument();
 			dxf.Entities.Add(CreateImage(imagePath));
 			
-			string tempDirectory = Path.GetTempPath();
-			
 			//сохранение dxf во временную директорию
-			string dxfFilePath = Path.Combine(tempDirectory, "map.dxf");
+			string dxfFilePath = Path.Combine(Environment.CurrentDirectory, "map.dxf");
 			dxf.Save(dxfFilePath);
 
 			// Обновляем путь в DXF файле
 			string relativeImagePath = "Images/" + Path.GetFileName(imagePath);
 			UpdateDxfFileWithRelativePath(dxfFilePath, relativeImagePath, imagePath);
-
 			//куда хотим сохранять арихв
 			string archivePath = @"D:\archive.zip";
-
-			using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create)) {
-				archive.CreateEntryFromFile(dxfFilePath, Path.GetFileName(dxfFilePath));
-				archive.CreateEntryFromFile(imagePath, "Images/" + Path.GetFileName(imagePath));
+			if (File.Exists(archivePath)) {
+				using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Update)) {
+					ZipArchiveEntry mapEntry = archive.GetEntry("map.dxf");
+					mapEntry.Delete(); //удаляю если уже есть
+					archive.CreateEntryFromFile(dxfFilePath, Path.GetFileName(dxfFilePath));
+					archive.CreateEntryFromFile(imagePath, "Images/" + Path.GetFileName(imagePath));
+				}
+			} else {
+				using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create)) {
+					archive.CreateEntryFromFile(dxfFilePath, Path.GetFileName(dxfFilePath));
+					archive.CreateEntryFromFile(imagePath, "Images/" + Path.GetFileName(imagePath));
+				}
 			}
 
 			File.Delete(dxfFilePath);
@@ -42,8 +47,7 @@ namespace CreateZIPFile1
 		private static string SaveImage(string sourceImage)
 		{
 			byte[] imageBytes = Convert.FromBase64String(sourceImage);
-			string tempDirectory = Path.GetTempPath();
-			string jpgFilePath = Path.Combine(tempDirectory, @"\image.jpg"); //путь до изображения во временную диреткорию
+			string jpgFilePath = Path.Combine(Environment.CurrentDirectory, "image.jpg"); //путь до изображения во временную диреткорию
 			File.WriteAllBytes(jpgFilePath, imageBytes);
 
 			return jpgFilePath;

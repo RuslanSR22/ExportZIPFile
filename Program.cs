@@ -1,6 +1,4 @@
 ﻿using CreateZIPFile1;
-using System;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace ExportZIPFile
